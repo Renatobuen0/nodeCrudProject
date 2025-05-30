@@ -6,19 +6,17 @@ const DATA_FILE = "./tasks.json"
 
 let tasks = []
 
-// Carrega tasks do arquivo
 async function loadTasks() {
 	try {
 		const data = await fs.readFile(DATA_FILE, "utf8")
 		tasks = JSON.parse(data)
 	} catch (error) {
 		if (error.code === "ENOENT") {
-			await saveTasks() // Cria arquivo se não existir
+			await saveTasks()
 		}
 	}
 }
 
-// Salva tasks no arquivo
 async function saveTasks() {
 	try {
 		await fs.writeFile(DATA_FILE, JSON.stringify(tasks, null, 2))
@@ -27,7 +25,6 @@ async function saveTasks() {
 	}
 }
 
-// Helpers para resposta JSON
 function sendResponse(res, statusCode, data) {
 	res.writeHead(statusCode, { "Content-Type": "application/json" })
 	res.end(JSON.stringify(data))
@@ -39,7 +36,6 @@ function sendError(res, statusCode, message, details = null) {
 	sendResponse(res, statusCode, errorObj)
 }
 
-// Validações
 function validateTaskInput(body) {
 	const { title, description } = body
 	const errors = []
@@ -50,7 +46,6 @@ function validateTaskInput(body) {
 	return errors
 }
 
-// Inicializa carregando as tasks
 await loadTasks()
 
 export async function createTask(req, res, body) {
@@ -80,19 +75,17 @@ export async function createTask(req, res, body) {
 
 export async function getAllTasks(req, res, queryParams) {
 	const search = queryParams?.get("search")?.trim()
-	const status = queryParams?.get("status") // completed, pending
+	const status = queryParams?.get("status")
 	const limit = parseInt(queryParams?.get("limit")) || null
 
 	let filteredTasks = tasks
 
-	// Filtro por status
 	if (status === "completed") {
 		filteredTasks = filteredTasks.filter((task) => task.completed_at)
 	} else if (status === "pending") {
 		filteredTasks = filteredTasks.filter((task) => !task.completed_at)
 	}
 
-	// Filtro por busca
 	if (search) {
 		const searchTerm = search.toLowerCase()
 		filteredTasks = filteredTasks.filter(
@@ -101,12 +94,10 @@ export async function getAllTasks(req, res, queryParams) {
 		)
 	}
 
-	// Limitar resultados
 	if (limit && limit > 0) {
 		filteredTasks = filteredTasks.slice(0, limit)
 	}
 
-	// Ordenar por data de criação (mais recentes primeiro)
 	filteredTasks.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
 	sendResponse(res, 200, {
@@ -142,7 +133,6 @@ export async function updateTask(req, res, id, body) {
 
 	const { title, description } = body
 
-	// Validar apenas os campos que foram enviados
 	if (title !== undefined && !title?.trim()) {
 		return sendError(res, 400, "Title cannot be empty")
 	}
@@ -150,7 +140,6 @@ export async function updateTask(req, res, id, body) {
 		return sendError(res, 400, "Description cannot be empty")
 	}
 
-	// Atualizar apenas os campos enviados
 	if (title !== undefined) task.title = title.trim()
 	if (description !== undefined) task.description = description.trim()
 	task.updated_at = getCurrentDate()
@@ -181,7 +170,6 @@ export async function deleteTask(req, res, id) {
 		res.writeHead(204)
 		res.end()
 	} catch (error) {
-		// Restaurar task se falhou ao salvar
 		tasks.splice(taskIndex, 0, deletedTask)
 		sendError(res, 500, "Failed to delete task", error.message)
 	}
